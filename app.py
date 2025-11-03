@@ -13,7 +13,7 @@ from src.prompt_templates import get_all_template_names, get_template, get_templ
 from src.utils import (
     format_token_count, format_cost, get_temperature_description,
     save_to_history, get_history_dataframe, clear_history,
-    export_history_to_csv, get_model_info
+    export_history_to_csv, get_model_info, validate_api_key
 )
 from config.settings import (
     AVAILABLE_MODELS, DEFAULT_MODEL, MIN_TEMPERATURE, MAX_TEMPERATURE,
@@ -58,6 +58,20 @@ st.markdown("""
     .stAlert {
         margin-top: 1rem;
     }
+    .privacy-notice {
+        background-color: #030809;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        border-left: 4px solid #1f77b4;
+        margin: 1rem 0;
+    }
+    .warning-banner {
+        background-color: #1a1504;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        border-left: 4px solid #ffc107;
+        margin-bottom: 1.5rem;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -70,6 +84,164 @@ def initialize_session_state():
         st.session_state.current_response = None
     if "comparison_mode" not in st.session_state:
         st.session_state.comparison_mode = False
+    if "api_key" not in st.session_state:
+        st.session_state.api_key = ""
+    if "api_key_valid" not in st.session_state:
+        st.session_state.api_key_valid = False
+    if "env_key_validated" not in st.session_state:
+        st.session_state.env_key_validated = False
+    if "env_key_validation_result" not in st.session_state:
+        st.session_state.env_key_validation_result = None
+    if "manual_key_validated" not in st.session_state:
+        st.session_state.manual_key_validated = {}  # Dict to track validated keys
+
+
+def render_api_key_input():
+    """Render API key input section and return validity status"""
+    st.sidebar.header("🔑 API Configuration")
+    
+    # Check if API key exists in environment
+    env_api_key = os.getenv("OPENAI_API_KEY")
+    
+    # Step 1: Try to validate .env key if it exists
+    if env_api_key:
+        # Check format first
+        if not validate_api_key(env_api_key):
+            st.sidebar.error("❌ .env API key has invalid format (must start with 'sk-' and be at least 20 characters)")
+            st.sidebar.info("👇 Please enter a valid API key below")
+        else:
+            # Format is good, now validate with API
+            if not st.session_state.get("env_key_validated", False):
+                # First time checking this .env key
+                with st.sidebar:
+                    with st.spinner("🔍 Validating API key from .env file..."):
+                        try:
+                            temp_client = OpenAIClient(api_key=env_api_key)
+                            validation = temp_client.test_api_key()
+                            st.session_state.env_key_validation_result = validation
+                            st.session_state.env_key_validated = True
+                        except Exception as e:
+                            st.session_state.env_key_validation_result = {
+                                "valid": False,
+                                "message": f"Failed to validate: {str(e)}"
+                            }
+                            st.session_state.env_key_validated = True
+            
+            # Check the validation result
+            validation = st.session_state.get("env_key_validation_result", {})
+            if validation.get("valid", False):
+                st.sidebar.success("✅ Using validated API key from .env file")
+                st.session_state.api_key = env_api_key
+                st.session_state.api_key_valid = True
+                return True, env_api_key
+            else:
+                # Validation failed
+                error_msg = validation.get("message", "Unknown error")
+                st.sidebar.error(f"❌ .env API key validation failed")
+                with st.sidebar.expander("🔍 Error Details"):
+                    st.error(error_msg)
+                st.sidebar.info("👇 Please enter a valid API key below")
+                # Continue to manual input
+    
+    # Privacy notice
+    st.sidebar.markdown("""
+        <div class="privacy-notice">
+            <strong>🔒 Privacy Notice</strong><br>
+            Your API key is only stored in your browser's session memory and is never saved to disk or transmitted to any server other than OpenAI's API.
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # API key input - don't pre-fill with env key if it failed
+    default_value = ""
+    if st.session_state.api_key and st.session_state.api_key_valid:
+        default_value = st.session_state.api_key
+    
+    api_key_input = st.sidebar.text_input(
+        "Enter your OpenAI API Key",
+        type="password",
+        value=default_value,
+        placeholder="sk-...",
+        help="Your API key starts with 'sk-'. Get it from https://platform.openai.com/api-keys",
+        key="api_key_input"
+    )
+    
+    if api_key_input:
+        # Check format first
+        if not validate_api_key(api_key_input):
+            st.session_state.api_key_valid = False
+            st.sidebar.error("❌ Invalid API key format. It should start with 'sk-' and be at least 20 characters")
+            return False, None
+        
+        # Check if we've already validated this specific key
+        if api_key_input in st.session_state.manual_key_validated:
+            # Use cached validation result
+            cached_result = st.session_state.manual_key_validated[api_key_input]
+            if cached_result["valid"]:
+                st.session_state.api_key = api_key_input
+                st.session_state.api_key_valid = True
+                st.sidebar.success("✅ Valid API key - You can now generate responses!")
+                return True, api_key_input
+            else:
+                st.session_state.api_key_valid = False
+                st.sidebar.error(f"❌ {cached_result['message']}")
+                return False, None
+        else:
+            # New key, need to validate
+            with st.sidebar:
+                with st.spinner("🔍 Validating your API key..."):
+                    try:
+                        temp_client = OpenAIClient(api_key=api_key_input)
+                        validation = temp_client.test_api_key()
+                        
+                        # Cache the result
+                        st.session_state.manual_key_validated[api_key_input] = validation
+                        
+                        if validation["valid"]:
+                            st.session_state.api_key = api_key_input
+                            st.session_state.api_key_valid = True
+                            st.sidebar.success("✅ Valid API key - You can now generate responses!")
+                            return True, api_key_input
+                        else:
+                            st.session_state.api_key_valid = False
+                            st.sidebar.error(f"❌ {validation['message']}")
+                            return False, None
+                    except Exception as e:
+                        st.session_state.api_key_valid = False
+                        error_msg = str(e)
+                        st.sidebar.error(f"❌ Validation failed: {error_msg}")
+                        # Cache the failure
+                        st.session_state.manual_key_validated[api_key_input] = {
+                            "valid": False,
+                            "message": f"Validation error: {error_msg}"
+                        }
+                        return False, None
+    else:
+        st.session_state.api_key_valid = False
+        st.sidebar.info("ℹ️ Exploring without API key - You can browse all features but won't be able to generate responses")
+        
+        with st.sidebar.expander("📖 How to get an API key"):
+            st.markdown("""
+                1. Go to [OpenAI Platform](https://platform.openai.com/)
+                2. Sign up or log in
+                3. Navigate to **API Keys** section
+                4. Click **Create new secret key**
+                5. Copy and paste it here
+                
+                **Note:** Keep your API key secure and never share it publicly!
+            """)
+        
+        return False, None
+
+
+def render_no_api_warning():
+    """Render warning banner when no API key is present"""
+    st.markdown("""
+        <div class="warning-banner">
+            <strong>⚠️ No API Key Detected</strong><br>
+            You're currently exploring in <strong>preview mode</strong>. To generate actual AI responses, please enter your OpenAI API key in the sidebar. 
+            You can still explore all features, adjust settings, and see how everything works!
+        </div>
+    """, unsafe_allow_html=True)
 
 
 def main():
@@ -80,22 +252,21 @@ def main():
     st.markdown(f'<div class="main-header">{APP_TITLE}</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="sub-header">{APP_DESCRIPTION}</div>', unsafe_allow_html=True)
     
-    # Check for API key
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        st.error("⚠️ OpenAI API Key not found! Please add it to your .env file.")
-        st.code("OPENAI_API_KEY=your_key_here")
-        st.stop()
+    # Get API key status
+    has_api_key, api_key = render_api_key_input()
     
-    # Initialize API client
-    try:
-        client = OpenAIClient()
-    except Exception as e:
-        st.error(f"❌ Failed to initialize OpenAI client: {e}")
-        st.stop()
+    # Initialize API client only if we have a valid key
+    client = None
+    if has_api_key:
+        try:
+            client = OpenAIClient(api_key=api_key)
+        except Exception as e:
+            st.error(f"❌ Failed to initialize OpenAI client: {e}")
+            has_api_key = False
     
-    # Sidebar - Configuration
+    # Sidebar - Configuration (always shown)
     with st.sidebar:
+        st.divider()
         st.header("⚙️ Configuration")
         
         # Mode selection
@@ -173,26 +344,31 @@ def main():
     
     # Main content area based on mode
     if mode == "Single Generation":
-        render_single_generation(client, selected_model, temperature, max_tokens, 
+        render_single_generation(client, has_api_key, selected_model, temperature, max_tokens, 
                                 top_p, frequency_penalty, presence_penalty)
     
     elif mode == "Comparison Mode":
-        render_comparison_mode(client, selected_model, temperature, max_tokens,
+        render_comparison_mode(client, has_api_key, selected_model, temperature, max_tokens,
                               top_p, frequency_penalty, presence_penalty)
     
     elif mode == "Template Explorer":
-        render_template_explorer(client, selected_model, temperature, max_tokens,
+        render_template_explorer(client, has_api_key, selected_model, temperature, max_tokens,
                                  top_p, frequency_penalty, presence_penalty)
     
-    # History section at the bottom
-    render_history_section()
+    # History section at the bottom (only show if there's history)
+    if st.session_state.history:
+        render_history_section()
 
 
-def render_single_generation(client, model, temperature, max_tokens, 
+def render_single_generation(client, has_api_key, model, temperature, max_tokens, 
                              top_p, frequency_penalty, presence_penalty):
     """Render single generation mode"""
     st.header("🎯 Single Generation Mode")
     st.markdown("Generate a single response with your custom prompt")
+    
+    # Show warning if no API key
+    if not has_api_key:
+        render_no_api_warning()
     
     col1, col2 = st.columns([2, 1])
     
@@ -214,35 +390,46 @@ def render_single_generation(client, model, temperature, max_tokens,
         )
         
         # Generate button
-        if st.button("🚀 Generate Response", type="primary", use_container_width=True):
-            with st.spinner("Generating response..."):
-                result = client.generate_completion(
-                    system_prompt=system_prompt,
-                    user_prompt=user_prompt,
-                    model=model,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                    top_p=top_p,
-                    frequency_penalty=frequency_penalty,
-                    presence_penalty=presence_penalty
-                )
-                
-                if result["success"]:
-                    st.session_state.current_response = result
-                    
-                    # Save to history
-                    save_to_history(
+        generate_button = st.button(
+            "🚀 Generate Response", 
+            type="primary", 
+            use_container_width=True,
+            disabled=not has_api_key
+        )
+        
+        if not has_api_key:
+            st.caption("⚠️ Enter your API key in the sidebar to enable generation")
+        
+        if generate_button:
+            if has_api_key and client:
+                with st.spinner("Generating response..."):
+                    result = client.generate_completion(
                         system_prompt=system_prompt,
                         user_prompt=user_prompt,
-                        response=result["response"],
                         model=model,
                         temperature=temperature,
-                        tokens=result["total_tokens"]
+                        max_tokens=max_tokens,
+                        top_p=top_p,
+                        frequency_penalty=frequency_penalty,
+                        presence_penalty=presence_penalty
                     )
                     
-                    st.success("✅ Response generated successfully!")
-                else:
-                    st.error(f"❌ Error: {result['error']}")
+                    if result["success"]:
+                        st.session_state.current_response = result
+                        
+                        # Save to history
+                        save_to_history(
+                            system_prompt=system_prompt,
+                            user_prompt=user_prompt,
+                            response=result["response"],
+                            model=model,
+                            temperature=temperature,
+                            tokens=result["total_tokens"]
+                        )
+                        
+                        st.success("✅ Response generated successfully!")
+                    else:
+                        st.error(f"❌ Error: {result['error']}")
     
     with col2:
         st.subheader("📊 Current Settings")
@@ -255,18 +442,32 @@ def render_single_generation(client, model, temperature, max_tokens,
             st.caption(f"Top P: {top_p}")
             st.caption(f"Frequency Penalty: {frequency_penalty}")
             st.caption(f"Presence Penalty: {presence_penalty}")
+        
+        # Show preview of what will happen
+        if not has_api_key:
+            st.divider()
+            st.info("**Preview Mode**\n\nWith an API key, clicking 'Generate Response' will:\n- Send your prompt to OpenAI\n- Display the AI's response\n- Track token usage\n- Calculate costs")
     
     # Display response
     if st.session_state.current_response:
         st.divider()
         display_response(st.session_state.current_response)
+    elif not has_api_key:
+        # Show demo response
+        st.divider()
+        st.subheader("💬 Demo Response Preview")
+        st.info("This is where your AI-generated response will appear once you enter an API key and click 'Generate Response'. The response will be formatted and displayed with token usage metrics.")
 
 
-def render_comparison_mode(client, model, temperature, max_tokens,
+def render_comparison_mode(client, has_api_key, model, temperature, max_tokens,
                            top_p, frequency_penalty, presence_penalty):
     """Render comparison mode"""
     st.header("🔄 Comparison Mode")
     st.markdown("Compare responses with different temperature settings")
+    
+    # Show warning if no API key
+    if not has_api_key:
+        render_no_api_warning()
     
     # Prompts
     col1, col2 = st.columns(2)
@@ -305,58 +506,93 @@ def render_comparison_mode(client, model, temperature, max_tokens,
         st.caption(get_temperature_description(temp3))
     
     # Generate button
-    if st.button("🚀 Compare Responses", type="primary", use_container_width=True):
-        configs = [
-            {"model": model, "temperature": temp1, "max_tokens": max_tokens, 
-             "top_p": top_p, "frequency_penalty": frequency_penalty, 
-             "presence_penalty": presence_penalty},
-            {"model": model, "temperature": temp2, "max_tokens": max_tokens,
-             "top_p": top_p, "frequency_penalty": frequency_penalty,
-             "presence_penalty": presence_penalty},
-            {"model": model, "temperature": temp3, "max_tokens": max_tokens,
-             "top_p": top_p, "frequency_penalty": frequency_penalty,
-             "presence_penalty": presence_penalty}
-        ]
-        
-        with st.spinner("Generating comparisons..."):
-            results = client.compare_completions(
-                system_prompt=system_prompt,
-                user_prompt=user_prompt,
-                configs=configs
-            )
-        
+    compare_button = st.button(
+        "🚀 Compare Responses", 
+        type="primary", 
+        use_container_width=True,
+        disabled=not has_api_key
+    )
+    
+    if not has_api_key:
+        st.caption("⚠️ Enter your API key in the sidebar to enable comparison")
+    
+    if compare_button:
+        if has_api_key and client:
+            configs = [
+                {"model": model, "temperature": temp1, "max_tokens": max_tokens, 
+                 "top_p": top_p, "frequency_penalty": frequency_penalty, 
+                 "presence_penalty": presence_penalty},
+                {"model": model, "temperature": temp2, "max_tokens": max_tokens,
+                 "top_p": top_p, "frequency_penalty": frequency_penalty,
+                 "presence_penalty": presence_penalty},
+                {"model": model, "temperature": temp3, "max_tokens": max_tokens,
+                 "top_p": top_p, "frequency_penalty": frequency_penalty,
+                 "presence_penalty": presence_penalty}
+            ]
+            
+            with st.spinner("Generating comparisons..."):
+                results = client.compare_completions(
+                    system_prompt=system_prompt,
+                    user_prompt=user_prompt,
+                    configs=configs
+                )
+            
+            st.divider()
+            
+            # Display results side by side
+            cols = st.columns(3)
+            
+            for idx, (col, result) in enumerate(zip(cols, results), 1):
+                with col:
+                    st.subheader(f"Response {idx}")
+                    st.caption(f"🌡️ Temperature: {result['config']['temperature']}")
+                    
+                    if result["success"]:
+                        st.markdown(f"**Response:**")
+                        st.info(result["response"])
+                        
+                        st.caption(f"📊 Tokens: {format_token_count(result['total_tokens'])}")
+                        
+                        cost = client.calculate_cost(
+                            model=result["model"],
+                            prompt_tokens=result["prompt_tokens"],
+                            completion_tokens=result["completion_tokens"],
+                            costs=MODEL_COSTS
+                        )
+                        st.caption(f"💰 Cost: {format_cost(cost)}")
+                    else:
+                        st.error(f"Error: {result['error']}")
+    
+    # Show demo comparison if no API key
+    if not has_api_key:
         st.divider()
+        st.subheader("📊 Demo Comparison Preview")
         
-        # Display results side by side
         cols = st.columns(3)
         
-        for idx, (col, result) in enumerate(zip(cols, results), 1):
+        demo_responses = [
+            "Low temperature (0.2) produces more focused, consistent, and deterministic responses. Perfect for factual tasks.",
+            "Medium temperature (0.7) balances creativity with consistency. Good for general-purpose applications.",
+            "High temperature (1.5) generates more creative, diverse, and unpredictable responses. Great for brainstorming!"
+        ]
+        
+        for idx, (col, demo) in enumerate(zip(cols, demo_responses), 1):
             with col:
-                st.subheader(f"Response {idx}")
-                st.caption(f"🌡️ Temperature: {result['config']['temperature']}")
-                
-                if result["success"]:
-                    st.markdown(f"**Response:**")
-                    st.info(result["response"])
-                    
-                    st.caption(f"📊 Tokens: {format_token_count(result['total_tokens'])}")
-                    
-                    cost = client.calculate_cost(
-                        model=result["model"],
-                        prompt_tokens=result["prompt_tokens"],
-                        completion_tokens=result["completion_tokens"],
-                        costs=MODEL_COSTS
-                    )
-                    st.caption(f"💰 Cost: {format_cost(cost)}")
-                else:
-                    st.error(f"Error: {result['error']}")
+                st.markdown(f"**Response {idx}**")
+                st.caption(f"🌡️ Temperature: {[temp1, temp2, temp3][idx-1]}")
+                st.info(demo)
+                st.caption("💡 This is a demo. Actual responses will appear here when you use your API key.")
 
 
-def render_template_explorer(client, model, temperature, max_tokens,
+def render_template_explorer(client, has_api_key, model, temperature, max_tokens,
                              top_p, frequency_penalty, presence_penalty):
     """Render template explorer mode"""
     st.header("📚 Template Explorer")
     st.markdown("Explore pre-built prompt templates demonstrating different techniques")
+    
+    # Show warning if no API key
+    if not has_api_key:
+        render_no_api_warning()
     
     # Template selection
     template_names = get_all_template_names()
@@ -394,32 +630,43 @@ def render_template_explorer(client, model, temperature, max_tokens,
             key=f"user_{selected_template}"
         )
         
-        if st.button("🚀 Try This Template", type="primary", use_container_width=True):
-            with st.spinner("Generating response..."):
-                result = client.generate_completion(
-                    system_prompt=system_prompt,
-                    user_prompt=user_prompt,
-                    model=model,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                    top_p=top_p,
-                    frequency_penalty=frequency_penalty,
-                    presence_penalty=presence_penalty
-                )
-                
-                if result["success"]:
-                    st.session_state.current_response = result
-                    save_to_history(
+        try_button = st.button(
+            "🚀 Try This Template", 
+            type="primary", 
+            use_container_width=True,
+            disabled=not has_api_key
+        )
+        
+        if not has_api_key:
+            st.caption("⚠️ Enter your API key in the sidebar to test this template")
+        
+        if try_button:
+            if has_api_key and client:
+                with st.spinner("Generating response..."):
+                    result = client.generate_completion(
                         system_prompt=system_prompt,
                         user_prompt=user_prompt,
-                        response=result["response"],
                         model=model,
                         temperature=temperature,
-                        tokens=result["total_tokens"]
+                        max_tokens=max_tokens,
+                        top_p=top_p,
+                        frequency_penalty=frequency_penalty,
+                        presence_penalty=presence_penalty
                     )
-                    st.success("✅ Response generated!")
-                else:
-                    st.error(f"❌ Error: {result['error']}")
+                    
+                    if result["success"]:
+                        st.session_state.current_response = result
+                        save_to_history(
+                            system_prompt=system_prompt,
+                            user_prompt=user_prompt,
+                            response=result["response"],
+                            model=model,
+                            temperature=temperature,
+                            tokens=result["total_tokens"]
+                        )
+                        st.success("✅ Response generated!")
+                    else:
+                        st.error(f"❌ Error: {result['error']}")
     
     with col2:
         st.subheader("💡 Template Tips")
@@ -452,6 +699,26 @@ def render_template_explorer(client, model, temperature, max_tokens,
     if st.session_state.current_response:
         st.divider()
         display_response(st.session_state.current_response)
+    elif not has_api_key:
+        # Show demo for templates
+        st.divider()
+        st.subheader("💬 Example Output Preview")
+        
+        # Show template-specific demo outputs
+        demo_outputs = {
+            "Zero-Shot": "This template demonstrates basic prompting without examples. AI responds directly to your query with no prior context or examples.",
+            "Few-Shot Learning": "This technique shows the AI examples first, then asks it to perform a similar task. The AI learns from the pattern in your examples.",
+            "Chain-of-Thought": "The AI will break down complex problems into steps, showing its reasoning process. This helps with math, logic, and analysis tasks.",
+            "Role-Based": "By assigning a specific role or persona, you guide the AI's tone, expertise level, and response style.",
+            "Constrained Output": "This ensures the AI follows specific formatting rules - perfect for structured data or when you need consistent output format.",
+            "Creative Writing": "Higher temperature settings make responses more creative and varied. Great for stories, poetry, and imaginative content.",
+            "Code Generation": "Lower temperature ensures consistent, reliable code. The AI focuses on correctness and best practices.",
+            "Structured Data Extraction": "The AI pulls key information from text and formats it as requested (JSON, CSV, etc.).",
+            "Negative Prompting": "Telling the AI what NOT to do often works better than just positive instructions.",
+            "ReAct (Reasoning + Acting)": "Combines reasoning (thinking through the problem) with actions (specific steps to take)."
+        }
+        
+        st.info(demo_outputs.get(selected_template, "Actual AI responses will appear here when you use your API key."))
 
 
 def display_response(result):
@@ -476,13 +743,17 @@ def display_response(result):
         st.metric("Output Tokens", format_token_count(result["completion_tokens"]))
     
     with col4:
-        cost = OpenAIClient().calculate_cost(
-            model=result["model"],
-            prompt_tokens=result["prompt_tokens"],
-            completion_tokens=result["completion_tokens"],
-            costs=MODEL_COSTS
-        )
-        st.metric("Cost", format_cost(cost))
+        # Get API key from session state for cost calculation
+        api_key = st.session_state.get("api_key", os.getenv("OPENAI_API_KEY"))
+        if api_key:
+            client = OpenAIClient(api_key=api_key)
+            cost = client.calculate_cost(
+                model=result["model"],
+                prompt_tokens=result["prompt_tokens"],
+                completion_tokens=result["completion_tokens"],
+                costs=MODEL_COSTS
+            )
+            st.metric("Cost", format_cost(cost))
 
 
 def render_history_section():

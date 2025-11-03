@@ -190,12 +190,26 @@ def validate_api_key(api_key: str) -> bool:
     if not api_key:
         return False
     
-    # OpenAI API keys start with 'sk-' and are at least 20 characters
-    if api_key.startswith("sk-") and len(api_key) > 20:
-        return True
+    # Strip whitespace (common issue in .env files)
+    api_key = api_key.strip()
     
-    return False
-
+    # Check if it starts with valid prefixes
+    valid_prefixes = ['sk-', 'sk-proj-', 'sk-svcacct-']
+    starts_with_valid_prefix = any(api_key.startswith(prefix) for prefix in valid_prefixes)
+    
+    if not starts_with_valid_prefix:
+        return False
+    
+    # Check minimum length (OpenAI keys are at least 40 characters)
+    if len(api_key) < 40:
+        return False
+    
+    # Check that it only contains valid characters (alphanumeric, hyphens, underscores)
+    import re
+    if not re.match(r'^[a-zA-Z0-9\-_]+$', api_key):
+        return False
+    
+    return True
 
 def get_model_info(model: str) -> Dict:
     """

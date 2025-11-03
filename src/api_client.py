@@ -17,14 +17,65 @@ class OpenAIClient:
     Wrapper for OpenAI API interactions
     """
     
-    def __init__(self):
-        """Initialize the OpenAI client"""
-        api_key = os.getenv("OPENAI_API_KEY")
+    def __init__(self, api_key: Optional[str] = None):
+        """
+        Initialize the OpenAI client
+        
+        Args:
+            api_key: OpenAI API key (optional, will use env var if not provided)
+        """
+        # Use provided API key or fall back to environment variable
+        if api_key is None:
+            api_key = os.getenv('OPENAI_API_KEY')
+        
         if not api_key:
-            raise ValueError("OPENAI_API_KEY not found in environment variables")
+            raise ValueError("API key must be provided either as parameter or in OPENAI_API_KEY environment variable")
         
         # Initialize client using the new OpenAI SDK syntax
         self.client = OpenAI(api_key=api_key)
+    
+    def test_api_key(self) -> Dict:
+        """
+        Test if the API key is valid by making a minimal API call
+        
+        Returns:
+            Dictionary with success status and message
+        """
+        try:
+            # Make a minimal API call to test the key
+            response = self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": "test"}],
+                max_tokens=5
+            )
+            return {
+                "valid": True,
+                "message": "API key is valid and working"
+            }
+        except Exception as e:
+            error_message = str(e)
+            
+            # Parse common error types
+            if "incorrect_api_key" in error_message or "invalid_api_key" in error_message:
+                return {
+                    "valid": False,
+                    "message": "Invalid API key. Please check your key and try again."
+                }
+            elif "insufficient_quota" in error_message:
+                return {
+                    "valid": False,
+                    "message": "API key is valid but you have insufficient quota/credits."
+                }
+            elif "rate_limit" in error_message:
+                return {
+                    "valid": True,  # Key is valid, just rate limited
+                    "message": "API key is valid (rate limit reached, but key works)"
+                }
+            else:
+                return {
+                    "valid": False,
+                    "message": f"API key validation failed: {error_message}"
+                }
     
     def count_tokens(self, text: str, model: str = "gpt-4o") -> int:
         """
