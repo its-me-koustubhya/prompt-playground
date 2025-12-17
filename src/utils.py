@@ -156,8 +156,6 @@ def highlight_code_in_response(response: str) -> str:
     Returns:
         Response with markdown code formatting
     """
-    # This is a simple implementation
-    # In a real app, you might use more sophisticated parsing
     return response
 
 
@@ -179,7 +177,7 @@ def truncate_text(text: str, max_length: int = 100) -> str:
 
 def validate_api_key(api_key: str) -> bool:
     """
-    Validate OpenAI API key format
+    Validate Groq API key format
     
     Args:
         api_key: API key to validate
@@ -190,26 +188,27 @@ def validate_api_key(api_key: str) -> bool:
     if not api_key:
         return False
     
-    # Strip whitespace (common issue in .env files)
+    # Strip whitespace
     api_key = api_key.strip()
     
-    # Check if it starts with valid prefixes
-    valid_prefixes = ['sk-', 'sk-proj-', 'sk-svcacct-']
+    # Groq API keys start with this prefix
+    valid_prefixes = ['gsk_']
     starts_with_valid_prefix = any(api_key.startswith(prefix) for prefix in valid_prefixes)
     
     if not starts_with_valid_prefix:
         return False
     
-    # Check minimum length (OpenAI keys are at least 40 characters)
+    # Check minimum length (Groq keys are long)
     if len(api_key) < 40:
         return False
     
-    # Check that it only contains valid characters (alphanumeric, hyphens, underscores)
+    # Only contains valid characters (alphanumeric and underscores)
     import re
-    if not re.match(r'^[a-zA-Z0-9\-_]+$', api_key):
+    if not re.match(r'^[a-zA-Z0-9_]+$', api_key):
         return False
     
     return True
+
 
 def get_model_info(model: str) -> Dict:
     """
@@ -222,30 +221,41 @@ def get_model_info(model: str) -> Dict:
         Dictionary with model information
     """
     model_info = {
-        "gpt-4o": {
-            "name": "GPT-4o",
-            "description": "Most advanced multimodal model, great for complex tasks",
-            "context_window": "128K tokens"
+        "llama-3.3-70b-versatile": {
+            "name": "Llama 3.3 70B",
+            "description": "Most capable Llama model, excellent for complex tasks",
+            "context_window": "128K tokens",
+            "cost": "FREE"
         },
-        "gpt-4o-mini": {
-            "name": "GPT-4o Mini",
-            "description": "Fast and affordable, great for most tasks",
-            "context_window": "128K tokens"
+        "llama-3.1-70b-versatile": {
+            "name": "Llama 3.1 70B",
+            "description": "Powerful and versatile, great for most tasks",
+            "context_window": "128K tokens",
+            "cost": "FREE"
         },
-        "gpt-4-turbo": {
-            "name": "GPT-4 Turbo",
-            "description": "Previous generation high-performance model",
-            "context_window": "128K tokens"
+        "llama-3.1-8b-instant": {
+            "name": "Llama 3.1 8B Instant",
+            "description": "Fast and efficient, perfect for quick responses",
+            "context_window": "128K tokens",
+            "cost": "FREE"
         },
-        "gpt-3.5-turbo": {
-            "name": "GPT-3.5 Turbo",
-            "description": "Fast and economical, good for simple tasks",
-            "context_window": "16K tokens"
+        "mixtral-8x7b-32768": {
+            "name": "Mixtral 8x7B",
+            "description": "Mixture of experts model, balanced performance",
+            "context_window": "32K tokens",
+            "cost": "FREE"
+        },
+        "gemma2-9b-it": {
+            "name": "Gemma 2 9B",
+            "description": "Google's efficient model, good for general tasks",
+            "context_window": "8K tokens",
+            "cost": "FREE"
         }
     }
     
     return model_info.get(model, {
         "name": model,
         "description": "Unknown model",
-        "context_window": "Unknown"
+        "context_window": "Unknown",
+        "cost": "FREE"
     })

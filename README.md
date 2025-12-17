@@ -1,10 +1,17 @@
 # 🎨 Prompt Playground App
 
-An interactive Streamlit application for experimenting with different prompting techniques and LLM parameters.
+An interactive Streamlit application for experimenting with different prompting techniques and LLM parameters using **Groq's FREE API**.
 
 ![Python](https://img.shields.io/badge/Python-3.11-blue)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.51.0-red)
-![OpenAI](https://img.shields.io/badge/OpenAI-2.6.1-green)
+![Groq](https://img.shields.io/badge/Groq-FREE-green)
+
+## 🎉 Why Groq?
+
+- **100% FREE** - No credit card required!
+- **Lightning Fast** - Groq's LPU technology delivers incredible speed
+- **Powerful Models** - Access to Llama 3.3 70B, Mixtral, and more
+- **No Quota Limits** - Generous free tier for learning and experimentation
 
 ## ✨ Features
 
@@ -18,8 +25,16 @@ An interactive Streamlit application for experimenting with different prompting 
 
 - Enter your API key directly in the app interface
 - **Privacy Guaranteed:** Your API key is stored only in browser session memory
-- Never saved to disk or transmitted anywhere except OpenAI's API
+- Never saved to disk or transmitted anywhere except Groq's API
 - Option to use `.env` file for local development
+
+### 🤖 Available Models (All FREE!)
+
+- **Llama 3.3 70B Versatile** - Most capable, excellent for complex tasks
+- **Llama 3.1 70B Versatile** - Powerful and versatile
+- **Llama 3.1 8B Instant** - Lightning fast responses
+- **Mixtral 8x7B** - Mixture of experts model
+- **Gemma 2 9B** - Google's efficient model
 
 ### 📚 Pre-Built Templates
 
@@ -37,11 +52,10 @@ An interactive Streamlit application for experimenting with different prompting 
 ### 📊 Advanced Features
 
 - Real-time token counting
-- Cost calculation per request
 - Temperature effect descriptions
 - History tracking with CSV export
 - Advanced parameter controls (Top P, Frequency Penalty, Presence Penalty)
-- Model selection (GPT-4o, GPT-4o Mini, GPT-4 Turbo, GPT-3.5 Turbo)
+- Side-by-side model comparisons
 
 ---
 
@@ -50,7 +64,7 @@ An interactive Streamlit application for experimenting with different prompting 
 ### Prerequisites
 
 - Python 3.11+
-- OpenAI API Key ([Get one here](https://platform.openai.com/api-keys))
+- FREE Groq API Key ([Get one here](https://console.groq.com/) - no credit card!)
 - Conda (recommended) or pip
 
 ### Installation
@@ -58,7 +72,7 @@ An interactive Streamlit application for experimenting with different prompting 
 1. **Clone the repository**
 
 ```bash
-git clone https://github.com/its-me-koustubhya/prompt-playground.git
+git clone <your-repo-url>
 cd prompt-playground
 ```
 
@@ -81,19 +95,21 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-5. **Enter your API key**
-   - Open the app in your browser (usually http://localhost:8501)
-   - Enter your OpenAI API key in the sidebar
+5. **Get your FREE Groq API key**
+   - Visit [Groq Console](https://console.groq.com/)
+   - Sign up (no credit card required!)
+   - Create an API key
+   - Enter it in the app sidebar
    - Start experimenting!
 
 ---
 
 ## 🔐 API Key Setup
 
-### Option 1: Enter in App (Recommended for Most Users)
+### Option 1: Enter in App (Recommended)
 
 1. Run the app: `streamlit run app.py`
-2. Enter your API key in the sidebar input field
+2. Enter your Groq API key in the sidebar (starts with `gsk_`)
 3. Your key is stored only in session memory (never saved to disk)
 
 ### Option 2: Use .env File (For Local Development)
@@ -101,7 +117,7 @@ streamlit run app.py
 1. Create a `.env` file in the project root:
 
 ```bash
-OPENAI_API_KEY=sk-your-actual-key-here
+GROQ_API_KEY=gsk_your-actual-key-here
 ```
 
 2. The app will automatically detect and use this key
@@ -110,34 +126,7 @@ OPENAI_API_KEY=sk-your-actual-key-here
 
 - Never commit your `.env` file to Git (it's already in `.gitignore`)
 - Never share your API key publicly
-- The app only sends your key to OpenAI's official API
-
----
-
-## 📁 Project Structure
-
-```
-prompt-playground/
-│
-├── app.py                      # Main Streamlit application
-├── .env                        # API keys (optional, not committed)
-├── .gitignore                  # Git ignore file
-├── requirements.txt            # Python dependencies
-├── README.md                   # Project documentation
-│
-├── src/
-│   ├── __init__.py
-│   ├── api_client.py          # OpenAI API interactions
-│   ├── prompt_templates.py    # Pre-built prompt templates
-│   └── utils.py               # Helper functions
-│
-├── config/
-│   ├── __init__.py
-│   └── settings.py            # App configuration
-│
-└── assets/
-    └── styles.css             # Custom CSS (optional)
-```
+- The app only sends your key to Groq's official API
 
 ---
 
@@ -145,7 +134,7 @@ prompt-playground/
 
 ```
 streamlit==1.51.0
-openai==2.6.1
+groq==0.37.1
 python-dotenv==1.2.1
 pandas==2.3.3
 tiktoken==0.12.0
@@ -166,7 +155,7 @@ By using this app, you'll learn:
 
 ✅ **LLM Parameter Optimization**
 
-- Token management and cost optimization
+- Token management
 - Advanced parameters (Top P, penalties)
 - Model selection for different tasks
 
@@ -200,82 +189,20 @@ Task: Math problem solving
 Result: AI shows step-by-step reasoning
 ```
 
-### Example 3: Code Generation
-
-```
-Mode: Single Generation
-System: "You are an expert Python programmer"
-Temperature: 0.2 (for consistency)
-Prompt: "Create a function to calculate fibonacci"
-
-Result: Clean, consistent code
-```
-
----
-
-## 🔧 Advanced Configuration
-
-### Temperature Guide
-
-- **0.0 - 0.3**: Deterministic, factual tasks
-- **0.4 - 0.7**: Balanced, general purpose
-- **0.8 - 1.2**: Creative tasks, brainstorming
-- **1.3 - 2.0**: Highly experimental, unpredictable
-
-### Model Selection
-
-- **GPT-4o**: Most advanced, best for complex tasks
-- **GPT-4o Mini**: Fast, affordable, great for most tasks (recommended)
-- **GPT-4 Turbo**: Previous generation, still powerful
-- **GPT-3.5 Turbo**: Economical, good for simple tasks
-
----
-
-## 📊 Cost Tracking
-
-The app shows approximate costs for each API call:
-
-- Input tokens: Charged per 1,000 tokens
-- Output tokens: Charged per 1,000 tokens
-- Costs vary by model (GPT-4o Mini is most economical)
-
 ---
 
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
 ---
 
 ## 🙏 Acknowledgments
 
 - Built with [Streamlit](https://streamlit.io/)
-- Powered by [OpenAI API](https://openai.com/)
-- Inspired by the prompt engineering community
+- Powered by [Groq](https://groq.com/) (FREE API!)
+- Models: Meta's Llama, Mistral's Mixtral, Google's Gemma
 
 ---
 
-## 📧 Contact
-
-For questions or feedback, please open an issue on GitHub.
-
----
-
-## 🎯 Roadmap
-
-- [ ] Add streaming responses
-- [ ] Save favorite prompts
-- [ ] Export prompts as code snippets
-- [ ] Add more prompt templates
-- [ ] Multi-turn conversation support
-- [ ] Batch processing mode
-
----
-
-**Happy Prompting! 🎨✨**
+**Happy Prompting! 🎨✨ (100% FREE!)**

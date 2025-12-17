@@ -2,15 +2,16 @@
 Configuration settings for the Prompt Playground App
 """
 
-# OpenAI Models
+# Groq Models (FREE!)
 AVAILABLE_MODELS = [
-    "gpt-4o",
-    "gpt-4o-mini",
-    "gpt-4-turbo",
-    "gpt-3.5-turbo",
+    "llama-3.3-70b-versatile",
+    "llama-3.1-70b-versatile",
+    "llama-3.1-8b-instant",
+    "mixtral-8x7b-32768",
+    "gemma2-9b-it",
 ]
 
-DEFAULT_MODEL = "gpt-4o-mini"
+DEFAULT_MODEL = "llama-3.1-8b-instant"
 
 # Temperature Settings
 MIN_TEMPERATURE = 0.0
@@ -19,7 +20,7 @@ DEFAULT_TEMPERATURE = 0.7
 
 # Token Settings
 MIN_TOKENS = 50
-MAX_TOKENS = 4000
+MAX_TOKENS = 8000
 DEFAULT_MAX_TOKENS = 500
 
 # Top P Settings
@@ -39,12 +40,13 @@ DEFAULT_PRESENCE_PENALTY = 0.0
 
 # App Settings
 APP_TITLE = "🎨 Prompt Playground"
-APP_DESCRIPTION = "Experiment with different prompting techniques and LLM parameters"
+APP_DESCRIPTION = "Experiment with different prompting techniques using Groq's FREE API"
 
-# Cost per 1K tokens (approximate, update as needed)
+# Cost per 1M tokens (Groq is FREE but we track for educational purposes)
 MODEL_COSTS = {
-    "gpt-4o": {"input": 0.005, "output": 0.015},
-    "gpt-4o-mini": {"input": 0.00015, "output": 0.0006},
-    "gpt-4-turbo": {"input": 0.01, "output": 0.03},
-    "gpt-3.5-turbo": {"input": 0.0005, "output": 0.0015},
+    "llama-3.3-70b-versatile": {"input": 0.0, "output": 0.0},
+    "llama-3.1-70b-versatile": {"input": 0.0, "output": 0.0},
+    "llama-3.1-8b-instant": {"input": 0.0, "output": 0.0},
+    "mixtral-8x7b-32768": {"input": 0.0, "output": 0.0},
+    "gemma2-9b-it": {"input": 0.0, "output": 0.0},
 }

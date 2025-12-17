@@ -8,7 +8,7 @@ import os
 from dotenv import load_dotenv
 
 # Import custom modules
-from src.api_client import OpenAIClient
+from src.api_client import GroqClient
 from src.prompt_templates import get_all_template_names, get_template, get_template_description
 from src.utils import (
     format_token_count, format_cost, get_temperature_description,
@@ -59,14 +59,14 @@ st.markdown("""
         margin-top: 1rem;
     }
     .privacy-notice {
-        background-color: #030809;
+        background-color: #0b1011;
         padding: 1rem;
         border-radius: 0.5rem;
         border-left: 4px solid #1f77b4;
         margin: 1rem 0;
     }
     .warning-banner {
-        background-color: #1a1504;
+        background-color: #3c351d;
         padding: 1rem;
         border-radius: 0.5rem;
         border-left: 4px solid #ffc107;
@@ -101,13 +101,13 @@ def render_api_key_input():
     st.sidebar.header("🔑 API Configuration")
     
     # Check if API key exists in environment
-    env_api_key = os.getenv("OPENAI_API_KEY")
+    env_api_key = os.getenv("GROQ_API_KEY")
     
     # Step 1: Try to validate .env key if it exists
     if env_api_key:
         # Check format first
         if not validate_api_key(env_api_key):
-            st.sidebar.error("❌ .env API key has invalid format (must start with 'sk-' and be at least 20 characters)")
+            st.sidebar.error("❌ .env API key has invalid format (must start with 'gsk_' and be at least 40 characters)")
             st.sidebar.info("👇 Please enter a valid API key below")
         else:
             # Format is good, now validate with API
@@ -116,7 +116,7 @@ def render_api_key_input():
                 with st.sidebar:
                     with st.spinner("🔍 Validating API key from .env file..."):
                         try:
-                            temp_client = OpenAIClient(api_key=env_api_key)
+                            temp_client = GroqClient(api_key=env_api_key)
                             validation = temp_client.test_api_key()
                             st.session_state.env_key_validation_result = validation
                             st.session_state.env_key_validated = True
@@ -147,7 +147,7 @@ def render_api_key_input():
     st.sidebar.markdown("""
         <div class="privacy-notice">
             <strong>🔒 Privacy Notice</strong><br>
-            Your API key is only stored in your browser's session memory and is never saved to disk or transmitted to any server other than OpenAI's API.
+            Your API key is only stored in your browser's session memory and is never saved to disk or transmitted to any server other than Groq's API.
         </div>
     """, unsafe_allow_html=True)
     
@@ -157,11 +157,11 @@ def render_api_key_input():
         default_value = st.session_state.api_key
     
     api_key_input = st.sidebar.text_input(
-        "Enter your OpenAI API Key",
+        "Enter your Groq API Key",
         type="password",
         value=default_value,
-        placeholder="sk-...",
-        help="Your API key starts with 'sk-'. Get it from https://platform.openai.com/api-keys",
+        placeholder="gsk_...",
+        help="Your API key starts with 'gsk_'. Get it FREE from https://console.groq.com/keys",
         key="api_key_input"
     )
     
@@ -169,7 +169,7 @@ def render_api_key_input():
         # Check format first
         if not validate_api_key(api_key_input):
             st.session_state.api_key_valid = False
-            st.sidebar.error("❌ Invalid API key format. It should start with 'sk-' and be at least 20 characters")
+            st.sidebar.error("❌ Invalid API key format. It should start with 'gsk_' and be at least 40 characters")
             return False, None
         
         # Check if we've already validated this specific key
@@ -190,7 +190,7 @@ def render_api_key_input():
             with st.sidebar:
                 with st.spinner("🔍 Validating your API key..."):
                     try:
-                        temp_client = OpenAIClient(api_key=api_key_input)
+                        temp_client = GroqClient(api_key=api_key_input)
                         validation = temp_client.test_api_key()
                         
                         # Cache the result
@@ -219,15 +219,15 @@ def render_api_key_input():
         st.session_state.api_key_valid = False
         st.sidebar.info("ℹ️ Exploring without API key - You can browse all features but won't be able to generate responses")
         
-        with st.sidebar.expander("📖 How to get an API key"):
+        with st.sidebar.expander("📖 How to get a FREE Groq API key"):
             st.markdown("""
-                1. Go to [OpenAI Platform](https://platform.openai.com/)
-                2. Sign up or log in
+                1. Go to [Groq Console](https://console.groq.com/)
+                2. Sign up or log in (FREE!)
                 3. Navigate to **API Keys** section
-                4. Click **Create new secret key**
+                4. Click **Create API Key**
                 5. Copy and paste it here
                 
-                **Note:** Keep your API key secure and never share it publicly!
+                **🎉 Groq is 100% FREE - no credit card required!**
             """)
         
         return False, None
@@ -238,7 +238,7 @@ def render_no_api_warning():
     st.markdown("""
         <div class="warning-banner">
             <strong>⚠️ No API Key Detected</strong><br>
-            You're currently exploring in <strong>preview mode</strong>. To generate actual AI responses, please enter your OpenAI API key in the sidebar. 
+            You're currently exploring in <strong>preview mode</strong>. To generate actual AI responses, please enter your Groq API key in the sidebar. 
             You can still explore all features, adjust settings, and see how everything works!
         </div>
     """, unsafe_allow_html=True)
@@ -259,9 +259,9 @@ def main():
     client = None
     if has_api_key:
         try:
-            client = OpenAIClient(api_key=api_key)
+            client = GroqClient(api_key=api_key)
         except Exception as e:
-            st.error(f"❌ Failed to initialize OpenAI client: {e}")
+            st.error(f"❌ Failed to initialize Groq client: {e}")
             has_api_key = False
     
     # Sidebar - Configuration (always shown)
@@ -393,7 +393,7 @@ def render_single_generation(client, has_api_key, model, temperature, max_tokens
         generate_button = st.button(
             "🚀 Generate Response", 
             type="primary", 
-            use_container_width=True,
+            width='stretch',
             disabled=not has_api_key
         )
         
@@ -509,7 +509,7 @@ def render_comparison_mode(client, has_api_key, model, temperature, max_tokens,
     compare_button = st.button(
         "🚀 Compare Responses", 
         type="primary", 
-        use_container_width=True,
+        width='stretch',
         disabled=not has_api_key
     )
     
@@ -552,14 +552,7 @@ def render_comparison_mode(client, has_api_key, model, temperature, max_tokens,
                         st.info(result["response"])
                         
                         st.caption(f"📊 Tokens: {format_token_count(result['total_tokens'])}")
-                        
-                        cost = client.calculate_cost(
-                            model=result["model"],
-                            prompt_tokens=result["prompt_tokens"],
-                            completion_tokens=result["completion_tokens"],
-                            costs=MODEL_COSTS
-                        )
-                        st.caption(f"💰 Cost: {format_cost(cost)}")
+                        st.caption(f"💰 Cost: FREE! 🎉")
                     else:
                         st.error(f"Error: {result['error']}")
     
@@ -633,7 +626,7 @@ def render_template_explorer(client, has_api_key, model, temperature, max_tokens
         try_button = st.button(
             "🚀 Try This Template", 
             type="primary", 
-            use_container_width=True,
+            width='stretch',
             disabled=not has_api_key
         )
         
@@ -744,16 +737,17 @@ def display_response(result):
     
     with col4:
         # Get API key from session state for cost calculation
-        api_key = st.session_state.get("api_key", os.getenv("OPENAI_API_KEY"))
+        api_key = st.session_state.get("api_key", os.getenv("GROQ_API_KEY"))
         if api_key:
-            client = OpenAIClient(api_key=api_key)
+            client = GroqClient(api_key=api_key)
             cost = client.calculate_cost(
                 model=result["model"],
                 prompt_tokens=result["prompt_tokens"],
                 completion_tokens=result["completion_tokens"],
                 costs=MODEL_COSTS
             )
-            st.metric("Cost", format_cost(cost))
+            # Show FREE badge instead of cost
+            st.metric("Cost", "FREE! 🎉")
 
 
 def render_history_section():
@@ -768,7 +762,7 @@ def render_history_section():
         else:
             st.dataframe(
                 df[["timestamp", "model", "temperature", "tokens", "user_prompt"]],
-                use_container_width=True,
+                width='stretch',
                 hide_index=True
             )
             
