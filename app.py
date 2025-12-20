@@ -103,7 +103,7 @@ def render_api_key_input():
     # Check if API key exists in environment
     env_api_key = os.getenv("GROQ_API_KEY")
     
-    # Step 1: Try to validate .env key if it exists
+    # Try to validate .env key if it exists
     if env_api_key:
         # Check format first
         if not validate_api_key(env_api_key):
