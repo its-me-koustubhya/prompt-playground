@@ -8,7 +8,6 @@ An interactive Streamlit application for experimenting with different prompting 
 
 ## 🎉 Why Groq?
 
-- **100% FREE** - No credit card required!
 - **Lightning Fast** - Groq's LPU technology delivers incredible speed
 - **Powerful Models** - Access to Llama 3.3 70B, Mixtral, and more
 - **No Quota Limits** - Generous free tier for learning and experimentation
@@ -28,7 +27,7 @@ An interactive Streamlit application for experimenting with different prompting 
 - Never saved to disk or transmitted anywhere except Groq's API
 - Option to use `.env` file for local development
 
-### 🤖 Available Models (All FREE!)
+### 🤖 Available Models
 
 - **Llama 3.3 70B Versatile** - Most capable, excellent for complex tasks
 - **Llama 3.1 70B Versatile** - Powerful and versatile
@@ -64,7 +63,7 @@ An interactive Streamlit application for experimenting with different prompting 
 ### Prerequisites
 
 - Python 3.11+
-- FREE Groq API Key ([Get one here](https://console.groq.com/) - no credit card!)
+- Groq API Key ([Get one here](https://console.groq.com/))
 - Conda (recommended) or pip
 
 ### Installation
@@ -97,7 +96,7 @@ streamlit run app.py
 
 5. **Get your FREE Groq API key**
    - Visit [Groq Console](https://console.groq.com/)
-   - Sign up (no credit card required!)
+   - Sign up
    - Create an API key
    - Enter it in the app sidebar
    - Start experimenting!
@@ -205,4 +204,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ---
 
-**Happy Prompting! 🎨✨ (100% FREE!)**
+**Happy Prompting! 🎨✨**
