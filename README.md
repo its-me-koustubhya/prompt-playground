@@ -199,7 +199,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## 🙏 Acknowledgments
 
 - Built with [Streamlit](https://streamlit.io/)
-- Powered by [Groq](https://groq.com/) (FREE API!)
+- Powered by [Groq](https://groq.com/)
 - Models: Meta's Llama, Mistral's Mixtral, Google's Gemma
 
 ---
